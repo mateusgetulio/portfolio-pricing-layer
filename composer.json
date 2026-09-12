@@ -1,11 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "mateusgetulio/portfolio-pricing-layer",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "A read-only portfolio pricing layer for multi-unit short-term rental hosts.",
     "keywords": [
         "laravel",
-        "framework"
+        "pricing",
+        "short-term-rentals"
     ],
     "license": "MIT",
     "require": {
