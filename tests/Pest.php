@@ -158,6 +158,22 @@ function invariantFailure(string $invariant, int $seed): string
     return "{$invariant} failed for random portfolio seed {$seed}. Rerun it with PRICING_TEST_SEED={$seed} vendor/bin/pest --filter='{$invariant} '";
 }
 
+function independentBookingStrengths(array $units, int $minHistoryNights): array
+{
+    $experienced = array_filter($units, fn (Unit $unit): bool => $unit->historyNights >= $minHistoryNights);
+    $mean = $experienced === [] ? 0.0 : array_sum(array_map(fn (Unit $unit): float => $unit->trailingOccupancy, $experienced)) / count($experienced);
+
+    $strengths = [];
+
+    foreach ($units as $unit) {
+        $strengths[$unit->id] = $mean > 0.0 && $unit->historyNights >= $minHistoryNights
+            ? round($unit->trailingOccupancy / $mean, 9)
+            : 1.0;
+    }
+
+    return $strengths;
+}
+
 function unitsById(PortfolioSnapshot $snapshot): array
 {
     $units = [];

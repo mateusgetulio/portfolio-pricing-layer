@@ -74,19 +74,18 @@ it('INV-5 never gives a stronger unit a larger discount than a weaker unit', fun
     $minHistoryNights = PricingConfig::fromArray(shippedPricingConfig())->minHistoryNights;
 
     foreach (pricedRandomPortfolios() as $seed => [$snapshot, $recommendations]) {
-        $units = unitsById($snapshot);
         $violations = [];
 
         foreach ($recommendations->assessments as $assessment) {
-            $comparable = array_values(array_filter(
+            $strengths = independentBookingStrengths($snapshot->unitsInGroup($assessment->groupId), $minHistoryNights);
+            $available = array_values(array_filter(
                 $recommendations->forGroupOn($assessment->groupId, $assessment->date),
-                fn (Recommendation $recommendation) => $recommendation->status === NightStatus::Available
-                    && $units[$recommendation->unitId]->historyNights >= $minHistoryNights,
+                fn (Recommendation $recommendation) => $recommendation->status === NightStatus::Available,
             ));
 
-            foreach ($comparable as $stronger) {
-                foreach ($comparable as $weaker) {
-                    if ($units[$stronger->unitId]->trailingOccupancy > $units[$weaker->unitId]->trailingOccupancy
+            foreach ($available as $stronger) {
+                foreach ($available as $weaker) {
+                    if ($strengths[$stronger->unitId] > $strengths[$weaker->unitId]
                         && $stronger->assignedDiscount > $weaker->assignedDiscount) {
                         $violations[] = "{$stronger->unitId} discounted more than weaker {$weaker->unitId} on {$assessment->date->format('Y-m-d')}";
                     }
