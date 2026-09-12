@@ -51,6 +51,13 @@ it('treats snapshot and night dates as calendar days in any timezone', function 
         ->and($snapshot->units[0]->nights[0]->date->format('Y-m-d H:i e'))->toBe('2026-09-11 00:00 UTC');
 });
 
+it('counts lead time in calendar days from the snapshot date', function () {
+    $snapshot = PortfolioSnapshot::fromArray(snapshotData());
+
+    expect($snapshot->leadTimeDays(new DateTimeImmutable('2026-09-19')))->toBe(8)
+        ->and($snapshot->leadTimeDays(new DateTimeImmutable('2026-09-11 23:30', new DateTimeZone('America/Sao_Paulo'))))->toBe(0);
+});
+
 it('rejects invalid input with a clear message', function (string $path, mixed $value, string $message) {
     $data = snapshotData();
     data_set($data, $path, $value);

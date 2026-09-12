@@ -57,6 +57,14 @@ final readonly class PortfolioSnapshot
         );
     }
 
+    public function leadTimeDays(DateTimeImmutable $date): int
+    {
+        $night = new DateTimeImmutable($date->format('Y-m-d'), new DateTimeZone('UTC'));
+        $days = (int) $this->asOf->diff($night)->days;
+
+        return $night < $this->asOf ? -$days : $days;
+    }
+
     /**
      * @return list<Unit>
      */
