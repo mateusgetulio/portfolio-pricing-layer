@@ -1,5 +1,6 @@
 <?php
 
+use App\Pricing\Data\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +45,40 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function snapshotData(): array
 {
-    // ..
+    return [
+        'as_of' => '2026-09-11',
+        'groups' => [['id' => 'downtown-1br', 'name' => 'Downtown 1BR']],
+        'units' => [sampleUnit()],
+    ];
+}
+
+function sampleUnit(array $overrides = []): array
+{
+    return array_replace([
+        'id' => 'unit-01',
+        'group_id' => 'downtown-1br',
+        'name' => 'Apartment 1',
+        'floor_price' => 9500,
+        'ceiling_price' => 26000,
+        'trailing_occupancy' => 0.8,
+        'history_nights' => 90,
+        'nights' => [sampleNight()],
+    ], $overrides);
+}
+
+function sampleNight(): array
+{
+    return ['date' => '2026-09-19', 'status' => 'available', 'base_price' => 14200];
+}
+
+function makeUnit(string $id, float $trailingOccupancy, int $historyNights = 90): Unit
+{
+    return new Unit($id, 'downtown-1br', $id, 9500, 26000, $trailingOccupancy, $historyNights, []);
+}
+
+function shippedPricingConfig(): array
+{
+    return require __DIR__.'/../config/portfolio_pricing.php';
 }
