@@ -67,11 +67,16 @@ final readonly class PaceCurve
         $weekdayTarget = is_array($point) ? ($point['weekday'] ?? null) : null;
         $weekendTarget = is_array($point) ? ($point['weekend'] ?? null) : null;
 
-        if (! is_int($leadTimeDays) || ! is_numeric($weekdayTarget) || ! is_numeric($weekendTarget)) {
+        if (! is_int($leadTimeDays) || ! self::isNumber($weekdayTarget) || ! self::isNumber($weekendTarget)) {
             throw new InvalidPaceCurve('Each pace curve point needs an integer lead_time_days and numeric weekday and weekend targets.');
         }
 
         return new PacePoint($leadTimeDays, (float) $weekdayTarget, (float) $weekendTarget);
+    }
+
+    private static function isNumber(mixed $value): bool
+    {
+        return is_int($value) || is_float($value);
     }
 
     private function ensureValidTargets(PacePoint $point): void

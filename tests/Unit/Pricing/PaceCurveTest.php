@@ -69,6 +69,10 @@ it('rejects a malformed pace curve', function (array $points, string $message) {
         [['lead_time_days' => 1, 'weekday' => 0.9], ['lead_time_days' => 7, 'weekday' => 0.7, 'weekend' => 0.7]],
         'Each pace curve point needs an integer lead_time_days and numeric weekday and weekend targets.',
     ],
+    'target given as text' => [
+        [['lead_time_days' => 1, 'weekday' => '0.9', 'weekend' => 0.9], ['lead_time_days' => 7, 'weekday' => 0.7, 'weekend' => 0.7]],
+        'Each pace curve point needs an integer lead_time_days and numeric weekday and weekend targets.',
+    ],
     'points not given as a list' => [
         ['near' => ['lead_time_days' => 1, 'weekday' => 0.9, 'weekend' => 0.9], 'far' => ['lead_time_days' => 7, 'weekday' => 0.7, 'weekend' => 0.7]],
         'Pace curve points must be a list.',
