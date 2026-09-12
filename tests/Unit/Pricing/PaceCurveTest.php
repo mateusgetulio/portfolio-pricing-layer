@@ -5,22 +5,24 @@ use App\Pricing\Exceptions\InvalidPaceCurve;
 use App\Pricing\PaceCurve;
 
 beforeEach(function () {
-    $this->curve = PaceCurve::fromArray([
-        ['lead_time_days' => 1, 'weekday' => 0.95, 'weekend' => 0.97],
-        ['lead_time_days' => 3, 'weekday' => 0.90, 'weekend' => 0.95],
-        ['lead_time_days' => 7, 'weekday' => 0.80, 'weekend' => 0.85],
-        ['lead_time_days' => 14, 'weekday' => 0.65, 'weekend' => 0.70],
-        ['lead_time_days' => 30, 'weekday' => 0.45, 'weekend' => 0.50],
-        ['lead_time_days' => 60, 'weekday' => 0.30, 'weekend' => 0.35],
-    ]);
+    $this->curve = PaceCurve::fromArray(shippedPricingConfig()['pace_curve']);
 });
 
-it('returns the configured target at each point', function (int $leadTimeDays, DayType $dayType, float $target) {
+it('returns the shipped target at every point of the curve', function (int $leadTimeDays, DayType $dayType, float $target) {
     expect($this->curve->targetFor($leadTimeDays, $dayType))->toBe($target);
 })->with([
-    'weekend one day out' => [1, DayType::Weekend, 0.97],
-    'weekday one week out' => [7, DayType::Weekday, 0.80],
-    'weekend sixty days out' => [60, DayType::Weekend, 0.35],
+    'weekday 1 day out' => [1, DayType::Weekday, 0.95],
+    'weekend 1 day out' => [1, DayType::Weekend, 0.97],
+    'weekday 3 days out' => [3, DayType::Weekday, 0.90],
+    'weekend 3 days out' => [3, DayType::Weekend, 0.95],
+    'weekday 7 days out' => [7, DayType::Weekday, 0.80],
+    'weekend 7 days out' => [7, DayType::Weekend, 0.85],
+    'weekday 14 days out' => [14, DayType::Weekday, 0.65],
+    'weekend 14 days out' => [14, DayType::Weekend, 0.70],
+    'weekday 30 days out' => [30, DayType::Weekday, 0.45],
+    'weekend 30 days out' => [30, DayType::Weekend, 0.50],
+    'weekday 60 days out' => [60, DayType::Weekday, 0.30],
+    'weekend 60 days out' => [60, DayType::Weekend, 0.35],
 ]);
 
 it('interpolates linearly between points', function (int $leadTimeDays, DayType $dayType, float $target) {
