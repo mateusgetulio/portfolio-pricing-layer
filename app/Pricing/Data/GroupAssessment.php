@@ -22,6 +22,17 @@ final readonly class GroupAssessment
         public float $discountRate,
     ) {}
 
+    public function progress(): string
+    {
+        $daysOut = match (true) {
+            $this->leadTimeDays <= 0 => 'today',
+            $this->leadTimeDays === 1 => '1 day out',
+            default => "{$this->leadTimeDays} days out",
+        };
+
+        return "{$this->bookedUnits} of {$this->sellableUnits()} booked, target {$this->targetBooked} by {$daysOut}";
+    }
+
     public function sellableUnits(): int
     {
         return $this->bookedUnits + $this->availableUnits;

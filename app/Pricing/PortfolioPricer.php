@@ -159,9 +159,9 @@ final readonly class PortfolioPricer
             $night->status === NightStatus::Booked => [PricingRule::BookedNight, 'Booked night, never repriced.'],
             $night->status === NightStatus::Blocked => [PricingRule::BlockedNight, 'Blocked night, never repriced.'],
             $assessment->mode === PricingMode::PassThrough => [PricingRule::SmallGroup, "Unchanged: a group of {$assessment->groupSize} units is too small for portfolio pricing."],
-            $assessment->mode === PricingMode::Protect => [PricingRule::AheadOfPace, "Protected: {$this->progress($assessment)}, ahead of pace."],
-            $assessment->mode === PricingMode::Hold => [PricingRule::OnPace, "Held: {$this->progress($assessment)}, on pace."],
-            default => [PricingRule::HeldForWeakerUnits, "Held: {$this->progress($assessment)}, the leader budget of {$assessment->leaderBudget} went to weaker units."],
+            $assessment->mode === PricingMode::Protect => [PricingRule::AheadOfPace, "Protected: {$assessment->progress()}, ahead of pace."],
+            $assessment->mode === PricingMode::Hold => [PricingRule::OnPace, "Held: {$assessment->progress()}, on pace."],
+            default => [PricingRule::HeldForWeakerUnits, "Held: {$assessment->progress()}, the leader budget of {$assessment->leaderBudget} went to weaker units."],
         };
 
         $recommended = $night->status === NightStatus::Available
@@ -209,7 +209,7 @@ final readonly class PortfolioPricer
             mode: $assessment->mode,
             rule: PricingRule::PriceLeader,
             leaderRank: $rank + 1,
-            reason: "{$headline}: {$this->progress($assessment)}, leader budget {$assessment->leaderBudget}, {$this->weakness($rank)} recent occupancy in the group.{$note}",
+            reason: "{$headline}: {$assessment->progress()}, leader budget {$assessment->leaderBudget}, {$this->weakness($rank)} recent occupancy in the group.{$note}",
         );
     }
 
@@ -225,17 +225,6 @@ final readonly class PortfolioPricer
             $recommendedCents < $unclampedCents => ' Limited to the ceiling price.',
             default => '',
         };
-    }
-
-    private function progress(GroupAssessment $assessment): string
-    {
-        $daysOut = match (true) {
-            $assessment->leadTimeDays <= 0 => 'today',
-            $assessment->leadTimeDays === 1 => '1 day out',
-            default => "{$assessment->leadTimeDays} days out",
-        };
-
-        return "{$assessment->bookedUnits} of {$assessment->sellableUnits()} booked, target {$assessment->targetBooked} by {$daysOut}";
     }
 
     private function weakness(int $rank): string
