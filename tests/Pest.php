@@ -129,7 +129,7 @@ function pricedRandomPortfolios(): Generator
             $snapshot = (new RandomPortfolioFactory($seed))->make();
             $recommendations = $pricer->price($snapshot);
         } catch (Throwable $exception) {
-            throw new RuntimeException(invariantFailure('Generating', $seed).' '.$exception->getMessage(), previous: $exception);
+            throw new RuntimeException("Random portfolio seed {$seed} could not be generated and priced. Rerun it with PRICING_TEST_SEED={$seed}. {$exception->getMessage()}", previous: $exception);
         }
 
         yield $seed => [$snapshot, $recommendations];
@@ -155,7 +155,7 @@ function randomPortfolioSeeds(): array
 
 function invariantFailure(string $invariant, int $seed): string
 {
-    return "{$invariant} failed for random portfolio seed {$seed}. Rerun it with PRICING_TEST_SEED={$seed} vendor/bin/pest --filter='{$invariant} '";
+    return "{$invariant} failed for random portfolio seed {$seed}. Rerun it with PRICING_TEST_SEED={$seed} vendor/bin/pest --filter='{$invariant}\\b'";
 }
 
 function independentBookingStrengths(array $units, int $minHistoryNights): array
