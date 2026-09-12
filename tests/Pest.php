@@ -1,10 +1,15 @@
 <?php
 
+use App\Pricing\Data\Night;
 use App\Pricing\Data\PortfolioSnapshot;
 use App\Pricing\Data\PricingConfig;
 use App\Pricing\Data\Unit;
+use App\Pricing\Enums\NightStatus;
 use App\Pricing\FixturePortfolioSource;
 use App\Pricing\PortfolioPricer;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
+use Tests\Support\RandomPortfolioFactory;
 use Tests\TestCase;
 
 /*
@@ -108,4 +113,58 @@ function twelveApartments(int $booked): PortfolioSnapshot
     }
 
     return PortfolioSnapshot::fromArray($data);
+}
+
+function pricedRandomPortfolios(): array
+{
+    static $priced = null;
+
+    if ($priced === null) {
+        $seed = getenv('PRICING_TEST_SEED');
+        $priced = [];
+
+        foreach ($seed === false ? range(1, 500) : [(int) $seed] as $portfolioSeed) {
+            $snapshot = (new RandomPortfolioFactory($portfolioSeed))->make();
+            $priced[$portfolioSeed] = [$snapshot, pricer()->price($snapshot)];
+        }
+    }
+
+    return $priced;
+}
+
+function invariantFailure(string $invariant, int $seed): string
+{
+    return "{$invariant} failed for random portfolio seed {$seed}. Rerun it with PRICING_TEST_SEED={$seed} vendor/bin/pest --filter={$invariant}";
+}
+
+function withNightBooked(PortfolioSnapshot $snapshot, string $unitId, DateTimeImmutable $date): PortfolioSnapshot
+{
+    $units = array_map(function (Unit $unit) use ($unitId, $date): Unit {
+        if ($unit->id !== $unitId) {
+            return $unit;
+        }
+
+        $nights = array_map(
+            fn (Night $night): Night => $night->date->format('Y-m-d') === $date->format('Y-m-d')
+                ? new Night($night->date, NightStatus::Booked, $night->basePriceCents)
+                : $night,
+            $unit->nights,
+        );
+
+        return new Unit($unit->id, $unit->groupId, $unit->name, $unit->floorPriceCents, $unit->ceilingPriceCents, $unit->trailingOccupancy, $unit->historyNights, $nights);
+    }, $snapshot->units);
+
+    return new PortfolioSnapshot($snapshot->asOf, $snapshot->groups, $units);
+}
+
+function shuffledSnapshot(PortfolioSnapshot $snapshot, int $seed): PortfolioSnapshot
+{
+    $random = new Randomizer(new Mt19937($seed));
+
+    $units = array_map(
+        fn (Unit $unit): Unit => new Unit($unit->id, $unit->groupId, $unit->name, $unit->floorPriceCents, $unit->ceilingPriceCents, $unit->trailingOccupancy, $unit->historyNights, $random->shuffleArray($unit->nights)),
+        $snapshot->units,
+    );
+
+    return new PortfolioSnapshot($snapshot->asOf, $random->shuffleArray($snapshot->groups), $random->shuffleArray($units));
 }
