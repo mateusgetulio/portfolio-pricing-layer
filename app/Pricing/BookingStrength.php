@@ -10,7 +10,7 @@ final readonly class BookingStrength
 
     /**
      * @param  list<Unit>  $units
-     * @return array<string, float>
+     * @return array<array-key, float>
      */
     public function forUnits(array $units): array
     {
