@@ -43,8 +43,8 @@ function sampleUnit(array $overrides = []): array
         'id' => 'unit-01',
         'group_id' => 'downtown-1br',
         'name' => 'Apartment 1',
-        'floor_price' => 9500,
-        'ceiling_price' => 26000,
+        'floor_price_cents' => 9500,
+        'ceiling_price_cents' => 26000,
         'trailing_occupancy' => 0.8,
         'history_nights' => 90,
         'nights' => [sampleNight()],
@@ -53,7 +53,7 @@ function sampleUnit(array $overrides = []): array
 
 function sampleNight(): array
 {
-    return ['date' => '2026-09-19', 'status' => 'available', 'base_price' => 14200];
+    return ['date' => '2026-09-19', 'status' => 'available', 'base_price_cents' => 14200];
 }
 
 function makeUnit(string $id, float $trailingOccupancy, int $historyNights = 90): Unit

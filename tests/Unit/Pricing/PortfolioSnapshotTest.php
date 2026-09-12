@@ -41,9 +41,9 @@ it('rejects invalid input with a clear message', function (string $path, mixed $
 
     expect(fn () => PortfolioSnapshot::fromArray($data))->toThrow(InvalidPortfolioSnapshot::class, $message);
 })->with([
-    'floor price above ceiling price' => ['units.0.floor_price', 30000, 'Unit [unit-01] has a floor price above its ceiling price.'],
-    'zero floor price' => ['units.0.floor_price', 0, 'Unit [unit-01] needs positive floor and ceiling prices.'],
-    'negative base price' => ['units.0.nights.0.base_price', -100, 'Base prices must be positive, got -100 on 2026-09-19.'],
+    'floor price above ceiling price' => ['units.0.floor_price_cents', 30000, 'Unit [unit-01] has a floor price above its ceiling price.'],
+    'zero floor price' => ['units.0.floor_price_cents', 0, 'Unit [unit-01] needs positive floor and ceiling prices.'],
+    'negative base price' => ['units.0.nights.0.base_price_cents', -100, 'Base prices must be positive, got -100 on 2026-09-19.'],
     'trailing occupancy above one' => ['units.0.trailing_occupancy', 1.2, 'Unit [unit-01] trailing occupancy must be between 0 and 1, got 1.2.'],
     'negative trailing occupancy' => ['units.0.trailing_occupancy', -0.1, 'Unit [unit-01] trailing occupancy must be between 0 and 1, got -0.1.'],
     'negative history nights' => ['units.0.history_nights', -5, 'Unit [unit-01] cannot have negative nights of history.'],
@@ -54,6 +54,6 @@ it('rejects invalid input with a clear message', function (string $path, mixed $
     'malformed date' => ['units.0.nights.0.date', '2026-02-30', 'The night date must be a Y-m-d date, got [2026-02-30].'],
     'night before the snapshot date' => ['units.0.nights.0.date', '2026-09-10', 'Unit [unit-01] has a night on 2026-09-10, before the snapshot date 2026-09-11.'],
     'duplicate night' => ['units.0.nights.1', sampleNight(), 'Unit [unit-01] has more than one entry for the same night.'],
-    'price given as a string' => ['units.0.floor_price', '9500', 'The unit [unit-01] floor_price must be an integer.'],
+    'price given as a string' => ['units.0.floor_price_cents', '9500', 'The unit [unit-01] floor_price_cents must be an integer.'],
     'missing group name' => ['groups.0.name', null, 'The group name must be a string.'],
 ]);

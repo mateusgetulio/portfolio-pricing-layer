@@ -81,8 +81,8 @@ final readonly class PortfolioSnapshot
             id: $id,
             groupId: self::stringFrom($unit, 'group_id', $context),
             name: self::stringFrom($unit, 'name', $context),
-            floorPriceCents: self::intFrom($unit, 'floor_price', $context),
-            ceilingPriceCents: self::intFrom($unit, 'ceiling_price', $context),
+            floorPriceCents: self::intFrom($unit, 'floor_price_cents', $context),
+            ceilingPriceCents: self::intFrom($unit, 'ceiling_price_cents', $context),
             trailingOccupancy: self::floatFrom($unit, 'trailing_occupancy', $context),
             historyNights: self::intFrom($unit, 'history_nights', $context),
             nights: array_map(self::nightFrom(...), self::listFrom($unit, 'nights', $context)),
@@ -98,7 +98,7 @@ final readonly class PortfolioSnapshot
             self::dateFrom($night, 'date', 'night'),
             NightStatus::tryFrom($statusValue)
                 ?? throw new InvalidPortfolioSnapshot("Night status must be booked, available or blocked, got [{$statusValue}]."),
-            self::intFrom($night, 'base_price', 'night'),
+            self::intFrom($night, 'base_price_cents', 'night'),
         );
     }
 
