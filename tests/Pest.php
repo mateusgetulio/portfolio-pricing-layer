@@ -1,6 +1,10 @@
 <?php
 
+use App\Pricing\Data\PortfolioSnapshot;
+use App\Pricing\Data\PricingConfig;
 use App\Pricing\Data\Unit;
+use App\Pricing\FixturePortfolioSource;
+use App\Pricing\PortfolioPricer;
 use Tests\TestCase;
 
 /*
@@ -64,4 +68,44 @@ function makeUnit(string $id, float $trailingOccupancy, int $historyNights = 90)
 function shippedPricingConfig(): array
 {
     return require __DIR__.'/../config/portfolio_pricing.php';
+}
+
+function pricer(array $overrides = []): PortfolioPricer
+{
+    return new PortfolioPricer(PricingConfig::fromArray(array_replace(shippedPricingConfig(), $overrides)));
+}
+
+function portfolioFixture(string $name = 'twelve-apartments'): PortfolioSnapshot
+{
+    return (new FixturePortfolioSource(__DIR__.'/../fixtures'))->load($name);
+}
+
+function scenario(array $units, string $night = '2026-09-19', int $leadTimeDays = 8): PortfolioSnapshot
+{
+    $asOf = (new DateTimeImmutable($night))->modify("-{$leadTimeDays} days")->format('Y-m-d');
+
+    return PortfolioSnapshot::fromArray([
+        'as_of' => $asOf,
+        'groups' => [['id' => 'downtown-1br', 'name' => 'Downtown 1BR']],
+        'units' => array_map(fn (array $unit): array => sampleUnit([
+            'id' => $unit['id'],
+            'trailing_occupancy' => $unit['occupancy'] ?? 0.72,
+            'history_nights' => $unit['history'] ?? 90,
+            'floor_price_cents' => $unit['floor'] ?? 9500,
+            'ceiling_price_cents' => $unit['ceiling'] ?? 26000,
+            'nights' => [['date' => $night, 'status' => $unit['status'], 'base_price_cents' => $unit['base'] ?? 14000]],
+        ]), $units),
+    ]);
+}
+
+function twelveApartments(int $booked): PortfolioSnapshot
+{
+    $data = json_decode((string) file_get_contents(__DIR__.'/../fixtures/twelve-apartments.json'), true);
+
+    foreach ($data['units'] as $index => $unit) {
+        $saturday = array_values(array_filter($unit['nights'], fn (array $night): bool => $night['date'] === '2026-09-19'))[0];
+        $data['units'][$index]['nights'] = [array_replace($saturday, ['status' => $index < $booked ? 'booked' : 'available'])];
+    }
+
+    return PortfolioSnapshot::fromArray($data);
 }
