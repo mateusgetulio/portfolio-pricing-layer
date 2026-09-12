@@ -23,6 +23,8 @@ use Tests\TestCase;
 |
 */
 
+const RANDOM_PORTFOLIOS = 2000;
+
 pest()->extend(TestCase::class)
     ->in('Feature');
 
@@ -115,26 +117,43 @@ function twelveApartments(int $booked): PortfolioSnapshot
     return PortfolioSnapshot::fromArray($data);
 }
 
-function pricedRandomPortfolios(): array
+function pricedRandomPortfolios(): Generator
 {
-    static $priced = null;
+    static $pricer = null;
+    $pricer ??= pricer();
 
-    if ($priced === null) {
-        $seed = getenv('PRICING_TEST_SEED');
-        $priced = [];
-
-        foreach ($seed === false ? range(1, 500) : [(int) $seed] as $portfolioSeed) {
-            $snapshot = (new RandomPortfolioFactory($portfolioSeed))->make();
-            $priced[$portfolioSeed] = [$snapshot, pricer()->price($snapshot)];
+    foreach (randomPortfolioSeeds() as $seed) {
+        try {
+            $snapshot = (new RandomPortfolioFactory($seed))->make();
+            $recommendations = $pricer->price($snapshot);
+        } catch (Throwable $exception) {
+            throw new RuntimeException(invariantFailure('Generating', $seed).' '.$exception->getMessage(), previous: $exception);
         }
+
+        yield $seed => [$snapshot, $recommendations];
+    }
+}
+
+function randomPortfolioSeeds(): array
+{
+    $seed = getenv('PRICING_TEST_SEED');
+
+    if ($seed === false) {
+        return range(1, RANDOM_PORTFOLIOS);
     }
 
-    return $priced;
+    $parsed = filter_var($seed, FILTER_VALIDATE_INT);
+
+    if ($parsed === false) {
+        throw new InvalidArgumentException("PRICING_TEST_SEED must be an integer, got [{$seed}].");
+    }
+
+    return [$parsed];
 }
 
 function invariantFailure(string $invariant, int $seed): string
 {
-    return "{$invariant} failed for random portfolio seed {$seed}. Rerun it with PRICING_TEST_SEED={$seed} vendor/bin/pest --filter={$invariant}";
+    return "{$invariant} failed for random portfolio seed {$seed}. Rerun it with PRICING_TEST_SEED={$seed} vendor/bin/pest --filter='{$invariant} '";
 }
 
 function withNightBooked(PortfolioSnapshot $snapshot, string $unitId, DateTimeImmutable $date): PortfolioSnapshot
@@ -155,6 +174,29 @@ function withNightBooked(PortfolioSnapshot $snapshot, string $unitId, DateTimeIm
     }, $snapshot->units);
 
     return new PortfolioSnapshot($snapshot->asOf, $snapshot->groups, $units);
+}
+
+function groupNightSnapshot(PortfolioSnapshot $snapshot, string $groupId, DateTimeImmutable $date): PortfolioSnapshot
+{
+    $units = array_map(
+        fn (Unit $unit): Unit => new Unit(
+            $unit->id,
+            $unit->groupId,
+            $unit->name,
+            $unit->floorPriceCents,
+            $unit->ceilingPriceCents,
+            $unit->trailingOccupancy,
+            $unit->historyNights,
+            array_values(array_filter($unit->nights, fn (Night $night): bool => $night->date->format('Y-m-d') === $date->format('Y-m-d'))),
+        ),
+        $snapshot->unitsInGroup($groupId),
+    );
+
+    return new PortfolioSnapshot(
+        $snapshot->asOf,
+        array_values(array_filter($snapshot->groups, fn ($group): bool => $group->id === $groupId)),
+        $units,
+    );
 }
 
 function shuffledSnapshot(PortfolioSnapshot $snapshot, int $seed): PortfolioSnapshot

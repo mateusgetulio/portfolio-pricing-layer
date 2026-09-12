@@ -33,9 +33,11 @@ final class RandomPortfolioFactory
             $groups[] = $group;
             $dates = $this->nightDates($asOf);
 
-            foreach (range(1, $this->random->getInt(1, 16)) as $unitNumber) {
+            $bookedShare = $this->random->getInt(0, 6);
+
+            foreach (range(1, $this->random->getInt(1, 24)) as $unitNumber) {
                 $id = $numericIds && $groupNumber === 1 ? (string) $unitNumber : "{$group->id}-unit-{$unitNumber}";
-                $units[] = $this->unit($id, $group, $dates);
+                $units[] = $this->unit($id, $group, $dates, $bookedShare);
             }
         }
 
@@ -49,7 +51,7 @@ final class RandomPortfolioFactory
         return array_map(fn (int $days): DateTimeImmutable => $asOf->modify("+{$days} days"), $offsets);
     }
 
-    private function unit(string $id, Group $group, array $dates): Unit
+    private function unit(string $id, Group $group, array $dates, int $bookedShare): Unit
     {
         $typicalPriceCents = $this->random->getInt(1, 400) * 100;
         $nights = [];
@@ -60,11 +62,18 @@ final class RandomPortfolioFactory
             }
 
             $basePriceCents = max(100, (int) round($typicalPriceCents * $this->random->getInt(80, 120) / 10000) * 100);
-            $nights[] = new Night($date, $this->status(), $basePriceCents);
+
+            if ($this->random->getInt(1, 4) === 1) {
+                $basePriceCents += $this->random->getInt(1, 99);
+            }
+
+            $nights[] = new Night($date, $this->status($bookedShare), $basePriceCents);
         }
 
         $prices = array_map(fn (Night $night): int => $night->basePriceCents, $nights) ?: [$typicalPriceCents];
-        $floorPriceCents = max(100, (int) floor(min($prices) * $this->random->getInt(30, 100) / 10000) * 100);
+        $floorPriceCents = $this->random->getInt(1, 5) === 1 && min($prices) >= 200
+            ? min($prices) - 100
+            : max(100, (int) floor(min($prices) * $this->random->getInt(30, 100) / 10000) * 100);
         $ceilingPriceCents = (int) ceil(max($prices) * $this->random->getInt(100, 160) / 10000) * 100;
 
         return new Unit(
@@ -79,11 +88,13 @@ final class RandomPortfolioFactory
         );
     }
 
-    private function status(): NightStatus
+    private function status(int $bookedShare): NightStatus
     {
-        return match ($this->random->getInt(1, 10)) {
-            1 => NightStatus::Blocked,
-            2, 3, 4, 5, 6 => NightStatus::Booked,
+        $roll = $this->random->getInt(1, 10);
+
+        return match (true) {
+            $roll === 1 => NightStatus::Blocked,
+            $roll <= 1 + $bookedShare => NightStatus::Booked,
             default => NightStatus::Available,
         };
     }
