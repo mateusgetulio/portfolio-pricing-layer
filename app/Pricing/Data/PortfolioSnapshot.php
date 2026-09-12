@@ -57,6 +57,17 @@ final readonly class PortfolioSnapshot
         );
     }
 
+    public function group(string $groupId): ?Group
+    {
+        foreach ($this->groups as $group) {
+            if ($group->id === $groupId) {
+                return $group;
+            }
+        }
+
+        return null;
+    }
+
     public function leadTimeDays(DateTimeImmutable $date): int
     {
         $night = new DateTimeImmutable($date->format('Y-m-d'), new DateTimeZone('UTC'));

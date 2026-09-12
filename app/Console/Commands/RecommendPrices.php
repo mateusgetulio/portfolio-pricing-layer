@@ -34,6 +34,12 @@ class RecommendPrices extends Command
             return self::FAILURE;
         }
 
+        if (is_string($date) && ! $this->isCalendarDate($date)) {
+            $this->error('The --date option must be a Y-m-d date.');
+
+            return self::FAILURE;
+        }
+
         try {
             $snapshot = $fixtures->load($fixture);
         } catch (FixtureNotFound|InvalidPortfolioSnapshot $exception) {
@@ -42,20 +48,8 @@ class RecommendPrices extends Command
             return self::FAILURE;
         }
 
-        $night = null;
-
-        if (is_string($date)) {
-            $night = DateTimeImmutable::createFromFormat('!Y-m-d', $date, new DateTimeZone('UTC'));
-
-            if ($night === false || $night->format('Y-m-d') !== $date) {
-                $this->error('The --date option must be a Y-m-d date.');
-
-                return self::FAILURE;
-            }
-        }
-
         $recommendations = $pricer->price($snapshot);
-        $assessments = $this->assessmentsOn($recommendations, $night);
+        $assessments = $this->assessmentsOn($recommendations, is_string($date) ? $date : null);
 
         if ($assessments === []) {
             $this->error(is_string($date) ? "No nights on {$date} in [{$fixture}]." : "Fixture [{$fixture}] has no nights.");
@@ -85,23 +79,24 @@ class RecommendPrices extends Command
     /**
      * @return list<GroupAssessment>
      */
-    private function assessmentsOn(RecommendationSet $recommendations, ?DateTimeImmutable $night): array
+    private function assessmentsOn(RecommendationSet $recommendations, ?string $date): array
     {
         return array_values(array_filter(
             $recommendations->assessments,
-            fn (GroupAssessment $assessment): bool => $night === null || $assessment->date->format('Y-m-d') === $night->format('Y-m-d'),
+            fn (GroupAssessment $assessment): bool => $date === null || $assessment->date->format('Y-m-d') === $date,
         ));
+    }
+
+    private function isCalendarDate(string $date): bool
+    {
+        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date, new DateTimeZone('UTC'));
+
+        return $parsed !== false && $parsed->format('Y-m-d') === $date;
     }
 
     private function headline(PortfolioSnapshot $snapshot, RecommendationSet $recommendations, GroupAssessment $assessment): string
     {
-        $groupName = $assessment->groupId;
-
-        foreach ($snapshot->groups as $group) {
-            if ($group->id === $assessment->groupId) {
-                $groupName = $group->name;
-            }
-        }
+        $groupName = $snapshot->group($assessment->groupId)->name ?? $assessment->groupId;
 
         $leaders = count(array_filter(
             $recommendations->forGroupOn($assessment->groupId, $assessment->date),
@@ -109,13 +104,12 @@ class RecommendPrices extends Command
         ));
 
         $decision = match ($assessment->mode) {
-            PricingMode::Fill => "Behind pace, {$leaders} ".($leaders === 1 ? 'price leader' : 'price leaders')." at up to {$this->percent($assessment->discountRate)}.",
-            PricingMode::Hold => 'On pace, no discounts.',
-            PricingMode::Protect => 'Ahead of pace, no discounts.',
-            PricingMode::PassThrough => 'Too small for portfolio pricing, unchanged.',
+            PricingMode::Fill => "{$leaders} ".($leaders === 1 ? 'price leader' : 'price leaders')." at up to {$this->percent($assessment->discountRate)}.",
+            PricingMode::PassThrough => 'unchanged.',
+            PricingMode::Hold, PricingMode::Protect => 'no discounts.',
         };
 
-        return "{$groupName}, {$assessment->date->format('l Y-m-d')}: {$assessment->progress()}. {$decision}";
+        return "{$groupName}, {$assessment->date->format('l Y-m-d')}: {$assessment->progress()}. {$assessment->mode->label()}, {$decision}";
     }
 
     private function money(int $cents): string

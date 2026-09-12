@@ -58,6 +58,13 @@ it('counts lead time in calendar days from the snapshot date', function () {
         ->and($snapshot->leadTimeDays(new DateTimeImmutable('2026-09-11 23:30', new DateTimeZone('America/Sao_Paulo'))))->toBe(0);
 });
 
+it('finds a group by its ID', function () {
+    $snapshot = PortfolioSnapshot::fromArray(snapshotData());
+
+    expect($snapshot->group('downtown-1br')?->name)->toBe('Downtown 1BR')
+        ->and($snapshot->group('uptown'))->toBeNull();
+});
+
 it('rejects invalid input with a clear message', function (string $path, mixed $value, string $message) {
     $data = snapshotData();
     data_set($data, $path, $value);

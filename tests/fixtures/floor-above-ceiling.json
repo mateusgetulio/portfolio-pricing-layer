@@ -1,0 +1,27 @@
+{
+    "as_of": "2026-09-11",
+    "groups": [
+        {
+            "id": "downtown-1br",
+            "name": "Downtown 1BR"
+        }
+    ],
+    "units": [
+        {
+            "id": "unit-01",
+            "group_id": "downtown-1br",
+            "name": "Apartment 1",
+            "floor_price_cents": 30000,
+            "ceiling_price_cents": 26000,
+            "trailing_occupancy": 0.8,
+            "history_nights": 90,
+            "nights": [
+                {
+                    "date": "2026-09-19",
+                    "status": "available",
+                    "base_price_cents": 14200
+                }
+            ]
+        }
+    ]
+}
