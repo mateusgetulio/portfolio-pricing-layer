@@ -1,5 +1,6 @@
 <?php
 
+use App\Pricing\Data\GroupAssessment;
 use App\Pricing\Data\PricingConfig;
 use App\Pricing\Data\Recommendation;
 use App\Pricing\Data\RecommendationSet;
@@ -10,49 +11,48 @@ use Tests\Support\RandomPortfolioFactory;
 
 it('INV-1 never changes a booked or blocked night', function () {
     foreach (pricedRandomPortfolios() as $seed => [, $recommendations]) {
-        foreach ($recommendations->recommendations as $recommendation) {
-            if ($recommendation->status !== NightStatus::Available) {
-                expect($recommendation->recommendedPriceCents)->toBe($recommendation->basePriceCents, invariantFailure('INV-1', $seed));
-            }
-        }
+        $changed = array_filter(
+            $recommendations->recommendations,
+            fn (Recommendation $recommendation) => $recommendation->status !== NightStatus::Available
+                && $recommendation->recommendedPriceCents !== $recommendation->basePriceCents,
+        );
+
+        expect(describeNights($changed))->toBe([], invariantFailure('INV-1', $seed));
     }
 });
 
 it('INV-2 keeps every available night within its floor and ceiling', function () {
     foreach (pricedRandomPortfolios() as $seed => [$snapshot, $recommendations]) {
-        $units = [];
+        $units = unitsById($snapshot);
 
-        foreach ($snapshot->units as $unit) {
-            $units[$unit->id] = $unit;
-        }
+        $outsideLimits = array_filter(
+            $recommendations->recommendations,
+            fn (Recommendation $recommendation) => $recommendation->status === NightStatus::Available
+                && ($recommendation->recommendedPriceCents < $units[$recommendation->unitId]->floorPriceCents
+                    || $recommendation->recommendedPriceCents > $units[$recommendation->unitId]->ceilingPriceCents),
+        );
 
-        foreach ($recommendations->recommendations as $recommendation) {
-            if ($recommendation->status === NightStatus::Available) {
-                expect($recommendation->recommendedPriceCents)
-                    ->toBeGreaterThanOrEqual($units[$recommendation->unitId]->floorPriceCents, invariantFailure('INV-2', $seed))
-                    ->toBeLessThanOrEqual($units[$recommendation->unitId]->ceilingPriceCents, invariantFailure('INV-2', $seed));
-            }
-        }
+        expect(describeNights($outsideLimits))->toBe([], invariantFailure('INV-2', $seed));
     }
 });
 
 it('INV-3 gives no discount outside fill mode', function () {
     foreach (pricedRandomPortfolios() as $seed => [, $recommendations]) {
-        foreach ($recommendations->recommendations as $recommendation) {
-            if ($recommendation->mode === PricingMode::Fill) {
-                continue;
-            }
+        $discounted = array_filter(
+            $recommendations->recommendations,
+            fn (Recommendation $recommendation) => $recommendation->mode !== PricingMode::Fill
+                && ($recommendation->assignedDiscount !== 0.0
+                    || $recommendation->isPriceLeader()
+                    || $recommendation->recommendedPriceCents !== $recommendation->basePriceCents),
+        );
 
-            expect($recommendation->assignedDiscount)->toBe(0.0, invariantFailure('INV-3', $seed))
-                ->and($recommendation->isPriceLeader())->toBeFalse(invariantFailure('INV-3', $seed))
-                ->and($recommendation->recommendedPriceCents)->toBe($recommendation->basePriceCents, invariantFailure('INV-3', $seed));
-        }
+        expect(describeNights($discounted))->toBe([], invariantFailure('INV-3', $seed));
     }
 });
 
 it('INV-4 never picks more price leaders than the bookings still needed', function () {
     foreach (pricedRandomPortfolios() as $seed => [, $recommendations]) {
-        foreach ($recommendations->assessments as $assessment) {
+        $overBudget = array_filter($recommendations->assessments, function (GroupAssessment $assessment) use ($recommendations): bool {
             $leaders = count(array_filter(
                 $recommendations->forGroupOn($assessment->groupId, $assessment->date),
                 fn (Recommendation $recommendation) => $recommendation->isPriceLeader(),
@@ -63,8 +63,10 @@ it('INV-4 never picks more price leaders than the bookings still needed', functi
                 $assessment->availableUnits,
             ));
 
-            expect($leaders)->toBeLessThanOrEqual($assessment->mode === PricingMode::Fill ? $bookingsStillNeeded : 0, invariantFailure('INV-4', $seed));
-        }
+            return $leaders > ($assessment->mode === PricingMode::Fill ? $bookingsStillNeeded : 0);
+        });
+
+        expect(describeAssessments($overBudget))->toBe([], invariantFailure('INV-4', $seed));
     }
 });
 
@@ -72,11 +74,8 @@ it('INV-5 never gives a stronger unit a larger discount than a weaker unit', fun
     $minHistoryNights = PricingConfig::fromArray(shippedPricingConfig())->minHistoryNights;
 
     foreach (pricedRandomPortfolios() as $seed => [$snapshot, $recommendations]) {
-        $units = [];
-
-        foreach ($snapshot->units as $unit) {
-            $units[$unit->id] = $unit;
-        }
+        $units = unitsById($snapshot);
+        $violations = [];
 
         foreach ($recommendations->assessments as $assessment) {
             $comparable = array_values(array_filter(
@@ -87,12 +86,15 @@ it('INV-5 never gives a stronger unit a larger discount than a weaker unit', fun
 
             foreach ($comparable as $stronger) {
                 foreach ($comparable as $weaker) {
-                    if ($units[$stronger->unitId]->trailingOccupancy > $units[$weaker->unitId]->trailingOccupancy) {
-                        expect($stronger->assignedDiscount)->toBeLessThanOrEqual($weaker->assignedDiscount, invariantFailure('INV-5', $seed));
+                    if ($units[$stronger->unitId]->trailingOccupancy > $units[$weaker->unitId]->trailingOccupancy
+                        && $stronger->assignedDiscount > $weaker->assignedDiscount) {
+                        $violations[] = "{$stronger->unitId} discounted more than weaker {$weaker->unitId} on {$assessment->date->format('Y-m-d')}";
                     }
                 }
             }
         }
+
+        expect($violations)->toBe([], invariantFailure('INV-5', $seed));
     }
 });
 
@@ -100,15 +102,15 @@ it('INV-6 never raises a price and never discounts beyond the maximum', function
     $maxDiscount = PricingConfig::fromArray(shippedPricingConfig())->maxDiscount;
 
     foreach (pricedRandomPortfolios() as $seed => [, $recommendations]) {
-        foreach ($recommendations->recommendations as $recommendation) {
-            if ($recommendation->status !== NightStatus::Available) {
-                continue;
-            }
+        $violations = array_filter(
+            $recommendations->recommendations,
+            fn (Recommendation $recommendation) => $recommendation->status === NightStatus::Available
+                && ($recommendation->recommendedPriceCents > $recommendation->basePriceCents
+                    || $recommendation->assignedDiscount > $maxDiscount
+                    || $recommendation->discount() > $recommendation->assignedDiscount + 0.000001),
+        );
 
-            expect($recommendation->recommendedPriceCents)->toBeLessThanOrEqual($recommendation->basePriceCents, invariantFailure('INV-6', $seed))
-                ->and($recommendation->assignedDiscount)->toBeLessThanOrEqual($maxDiscount, invariantFailure('INV-6', $seed))
-                ->and($recommendation->discount())->toBeLessThanOrEqual($recommendation->assignedDiscount + 0.000001, invariantFailure('INV-6', $seed));
-        }
+        expect(describeNights($violations))->toBe([], invariantFailure('INV-6', $seed));
     }
 });
 
@@ -116,19 +118,20 @@ it('INV-7 passes groups smaller than the minimum size through unchanged', functi
     $minGroupSize = PricingConfig::fromArray(shippedPricingConfig())->minGroupSize;
 
     foreach (pricedRandomPortfolios() as $seed => [, $recommendations]) {
-        foreach ($recommendations->assessments as $assessment) {
+        $violations = array_filter($recommendations->assessments, function (GroupAssessment $assessment) use ($recommendations, $minGroupSize): bool {
             if ($assessment->groupSize >= $minGroupSize) {
-                expect($assessment->mode)->not->toBe(PricingMode::PassThrough, invariantFailure('INV-7', $seed));
-
-                continue;
+                return $assessment->mode === PricingMode::PassThrough;
             }
 
-            expect($assessment->mode)->toBe(PricingMode::PassThrough, invariantFailure('INV-7', $seed));
+            $changed = array_filter(
+                $recommendations->forGroupOn($assessment->groupId, $assessment->date),
+                fn (Recommendation $recommendation) => $recommendation->recommendedPriceCents !== $recommendation->basePriceCents,
+            );
 
-            foreach ($recommendations->forGroupOn($assessment->groupId, $assessment->date) as $recommendation) {
-                expect($recommendation->recommendedPriceCents)->toBe($recommendation->basePriceCents, invariantFailure('INV-7', $seed));
-            }
-        }
+            return $assessment->mode !== PricingMode::PassThrough || $changed !== [];
+        });
+
+        expect(describeAssessments($violations))->toBe([], invariantFailure('INV-7', $seed));
     }
 });
 
@@ -138,12 +141,11 @@ it('INV-8 is deterministic, pure and independent of input order', function () {
     foreach (pricedRandomPortfolios() as $seed => [, $recommendations]) {
         $snapshot = (new RandomPortfolioFactory($seed))->make();
         $before = serialize($snapshot);
+        $expected = serialize($recommendations);
 
-        $priced = $pricer->price($snapshot);
-
-        expect(serialize($snapshot))->toBe($before, invariantFailure('INV-8', $seed))
-            ->and($priced)->toEqual($recommendations, invariantFailure('INV-8', $seed))
-            ->and($pricer->price(shuffledSnapshot($snapshot, $seed)))->toEqual($recommendations, invariantFailure('INV-8', $seed));
+        expect(serialize($pricer->price($snapshot)))->toBe($expected, invariantFailure('INV-8', $seed))
+            ->and(serialize($pricer->price(shuffledSnapshot($snapshot, $seed))))->toBe($expected, invariantFailure('INV-8', $seed))
+            ->and(serialize($snapshot))->toBe($before, invariantFailure('INV-8', $seed));
     }
 });
 
@@ -159,7 +161,7 @@ it('INV-9 explains every night with the rule that fits its status and mode', fun
     ];
 
     foreach (pricedRandomPortfolios() as $seed => [, $recommendations]) {
-        foreach ($recommendations->recommendations as $recommendation) {
+        $unexplained = array_filter($recommendations->recommendations, function (Recommendation $recommendation) use ($phrases): bool {
             $fittingRules = match (true) {
                 $recommendation->status === NightStatus::Booked => [PricingRule::BookedNight],
                 $recommendation->status === NightStatus::Blocked => [PricingRule::BlockedNight],
@@ -174,15 +176,15 @@ it('INV-9 explains every night with the rule that fits its status and mode', fun
                 fn (string $phrase) => str_contains($recommendation->reason, $phrase),
             );
 
-            expect(in_array($recommendation->rule, $fittingRules, true))->toBeTrue(invariantFailure('INV-9', $seed))
-                ->and($matchingPhrases)->not->toBeEmpty(invariantFailure('INV-9', $seed));
-        }
+            return ! in_array($recommendation->rule, $fittingRules, true) || $matchingPhrases === [];
+        });
+
+        expect(describeNights($unexplained))->toBe([], invariantFailure('INV-9', $seed));
     }
 });
 
 it('INV-10 never assigns more discount when demand rises', function () {
     $pricer = pricer();
-
     $modeOrder = [
         PricingMode::Fill->value => 0,
         PricingMode::Hold->value => 1,
@@ -191,28 +193,34 @@ it('INV-10 never assigns more discount when demand rises', function () {
     ];
 
     foreach (pricedRandomPortfolios() as $seed => [$snapshot, $recommendations]) {
+        $violations = [];
+
         foreach ($recommendations->assessments as $assessment) {
             $totalDiscount = fn (RecommendationSet $set) => array_sum(array_map(
                 fn (Recommendation $recommendation) => $recommendation->assignedDiscount,
                 $set->forGroupOn($assessment->groupId, $assessment->date),
             ));
+            $discountBefore = $totalDiscount($recommendations);
+            $groupNight = groupNightSnapshot($snapshot, $assessment->groupId, $assessment->date);
 
             $available = array_filter(
                 $recommendations->forGroupOn($assessment->groupId, $assessment->date),
                 fn (Recommendation $recommendation) => $recommendation->status === NightStatus::Available,
             );
 
-            $groupNight = groupNightSnapshot($snapshot, $assessment->groupId, $assessment->date);
-
             foreach ($available as $unitToBook) {
                 $moreDemand = $pricer->price(withNightBooked($groupNight, $unitToBook->unitId, $assessment->date));
                 $after = $moreDemand->assessmentFor($assessment->groupId, $assessment->date);
 
-                expect($after->leaderBudget)->toBeLessThanOrEqual($assessment->leaderBudget, invariantFailure('INV-10', $seed))
-                    ->and($after->discountRate)->toBeLessThanOrEqual($assessment->discountRate, invariantFailure('INV-10', $seed))
-                    ->and($totalDiscount($moreDemand))->toBeLessThanOrEqual($totalDiscount($recommendations) + 0.000001, invariantFailure('INV-10', $seed))
-                    ->and($modeOrder[$after->mode->value])->toBeGreaterThanOrEqual($modeOrder[$assessment->mode->value], invariantFailure('INV-10', $seed));
+                if ($after->leaderBudget > $assessment->leaderBudget
+                    || $after->discountRate > $assessment->discountRate
+                    || $totalDiscount($moreDemand) > $discountBefore + 0.000001
+                    || $modeOrder[$after->mode->value] < $modeOrder[$assessment->mode->value]) {
+                    $violations[] = "booking {$unitToBook->unitId} in {$assessment->groupId} on {$assessment->date->format('Y-m-d')}";
+                }
             }
         }
+
+        expect($violations)->toBe([], invariantFailure('INV-10', $seed));
     }
 });

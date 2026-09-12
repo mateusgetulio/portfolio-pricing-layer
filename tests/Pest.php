@@ -1,8 +1,10 @@
 <?php
 
+use App\Pricing\Data\GroupAssessment;
 use App\Pricing\Data\Night;
 use App\Pricing\Data\PortfolioSnapshot;
 use App\Pricing\Data\PricingConfig;
+use App\Pricing\Data\Recommendation;
 use App\Pricing\Data\Unit;
 use App\Pricing\Enums\NightStatus;
 use App\Pricing\FixturePortfolioSource;
@@ -154,6 +156,33 @@ function randomPortfolioSeeds(): array
 function invariantFailure(string $invariant, int $seed): string
 {
     return "{$invariant} failed for random portfolio seed {$seed}. Rerun it with PRICING_TEST_SEED={$seed} vendor/bin/pest --filter='{$invariant} '";
+}
+
+function unitsById(PortfolioSnapshot $snapshot): array
+{
+    $units = [];
+
+    foreach ($snapshot->units as $unit) {
+        $units[$unit->id] = $unit;
+    }
+
+    return $units;
+}
+
+function describeNights(array $recommendations): array
+{
+    return array_values(array_map(
+        fn (Recommendation $recommendation): string => "{$recommendation->unitId} on {$recommendation->date->format('Y-m-d')}",
+        $recommendations,
+    ));
+}
+
+function describeAssessments(array $assessments): array
+{
+    return array_values(array_map(
+        fn (GroupAssessment $assessment): string => "{$assessment->groupId} on {$assessment->date->format('Y-m-d')}",
+        $assessments,
+    ));
 }
 
 function withNightBooked(PortfolioSnapshot $snapshot, string $unitId, DateTimeImmutable $date): PortfolioSnapshot
