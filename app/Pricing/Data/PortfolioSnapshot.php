@@ -9,15 +9,19 @@ use DateTimeZone;
 
 final readonly class PortfolioSnapshot
 {
+    public DateTimeImmutable $asOf;
+
     /**
      * @param  list<Group>  $groups
      * @param  list<Unit>  $units
      */
     public function __construct(
-        public DateTimeImmutable $asOf,
+        DateTimeImmutable $asOf,
         public array $groups,
         public array $units,
     ) {
+        $this->asOf = new DateTimeImmutable($asOf->format('Y-m-d'), new DateTimeZone('UTC'));
+
         $groupIds = array_map(fn (Group $group): string => $group->id, $groups);
 
         if (($duplicate = self::firstDuplicate($groupIds)) !== null) {
@@ -34,8 +38,8 @@ final readonly class PortfolioSnapshot
             }
 
             foreach ($unit->nights as $night) {
-                if ($night->date < $asOf) {
-                    throw new InvalidPortfolioSnapshot("Unit [{$unit->id}] has a night on {$night->date->format('Y-m-d')}, before the snapshot date {$asOf->format('Y-m-d')}.");
+                if ($night->date < $this->asOf) {
+                    throw new InvalidPortfolioSnapshot("Unit [{$unit->id}] has a night on {$night->date->format('Y-m-d')}, before the snapshot date {$this->asOf->format('Y-m-d')}.");
                 }
             }
         }

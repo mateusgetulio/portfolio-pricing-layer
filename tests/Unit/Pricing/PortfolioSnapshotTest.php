@@ -1,5 +1,7 @@
 <?php
 
+use App\Pricing\Data\Group;
+use App\Pricing\Data\Night;
 use App\Pricing\Data\PortfolioSnapshot;
 use App\Pricing\Data\Unit;
 use App\Pricing\Enums\NightStatus;
@@ -33,6 +35,20 @@ it('finds a unit night by date', function () {
 
     expect($unit->nightOn(new DateTimeImmutable('2026-09-19'))?->basePriceCents)->toBe(14200)
         ->and($unit->nightOn(new DateTimeImmutable('2026-09-20')))->toBeNull();
+});
+
+it('treats snapshot and night dates as calendar days in any timezone', function () {
+    $lateEveningInSaoPaulo = new DateTimeImmutable('2026-09-11 23:00', new DateTimeZone('America/Sao_Paulo'));
+    $night = new Night(new DateTimeImmutable('2026-09-11', new DateTimeZone('UTC')), NightStatus::Available, 14200);
+
+    $snapshot = new PortfolioSnapshot(
+        $lateEveningInSaoPaulo,
+        [new Group('downtown-1br', 'Downtown 1BR')],
+        [new Unit('unit-01', 'downtown-1br', 'Apartment 1', 9500, 26000, 0.8, 90, [$night])],
+    );
+
+    expect($snapshot->asOf->format('Y-m-d H:i e'))->toBe('2026-09-11 00:00 UTC')
+        ->and($snapshot->units[0]->nights[0]->date->format('Y-m-d H:i e'))->toBe('2026-09-11 00:00 UTC');
 });
 
 it('rejects invalid input with a clear message', function (string $path, mixed $value, string $message) {
