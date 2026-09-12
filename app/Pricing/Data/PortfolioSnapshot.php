@@ -85,20 +85,27 @@ final readonly class PortfolioSnapshot
             ceilingPriceCents: self::intFrom($unit, 'ceiling_price_cents', $context),
             trailingOccupancy: self::floatFrom($unit, 'trailing_occupancy', $context),
             historyNights: self::intFrom($unit, 'history_nights', $context),
-            nights: array_map(self::nightFrom(...), self::listFrom($unit, 'nights', $context)),
+            nights: array_map(fn (mixed $night): Night => self::nightFrom($night, $context), self::listFrom($unit, 'nights', $context)),
         );
     }
 
-    private static function nightFrom(mixed $night): Night
+    private static function nightFrom(mixed $night, string $unitContext): Night
     {
-        $night = self::arrayFrom($night, 'night');
-        $statusValue = self::stringFrom($night, 'status', 'night');
+        $context = "{$unitContext} night";
+        $night = self::arrayFrom($night, $context);
+        $date = self::dateFrom($night, 'date', $context);
+        $statusValue = self::stringFrom($night, 'status', $context);
+        $basePriceCents = self::intFrom($night, 'base_price_cents', $context);
+
+        if ($basePriceCents <= 0) {
+            throw new InvalidPortfolioSnapshot("The {$context} on {$date->format('Y-m-d')} needs a positive base_price_cents, got {$basePriceCents}.");
+        }
 
         return new Night(
-            self::dateFrom($night, 'date', 'night'),
+            $date,
             NightStatus::tryFrom($statusValue)
-                ?? throw new InvalidPortfolioSnapshot("Night status must be booked, available or blocked, got [{$statusValue}]."),
-            self::intFrom($night, 'base_price_cents', 'night'),
+                ?? throw new InvalidPortfolioSnapshot("The {$context} status must be booked, available or blocked, got [{$statusValue}]."),
+            $basePriceCents,
         );
     }
 
