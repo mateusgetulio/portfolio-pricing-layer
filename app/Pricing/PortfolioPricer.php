@@ -125,7 +125,7 @@ final readonly class PortfolioPricer
             $rank = array_search($unit, $leaders, true);
 
             $recommendations[] = $rank === false
-                ? $this->unchanged($assessment, $unit, $night)
+                ? $this->unchanged($assessment, $unit, $night, count($leaders))
                 : $this->priceLeader($assessment, $unit, $night, $rank, $discounts[$rank]);
         }
 
@@ -153,7 +153,7 @@ final readonly class PortfolioPricer
         return $discounts;
     }
 
-    private function unchanged(GroupAssessment $assessment, Unit $unit, Night $night): Recommendation
+    private function unchanged(GroupAssessment $assessment, Unit $unit, Night $night, int $leaders): Recommendation
     {
         [$rule, $reason] = match (true) {
             $night->status === NightStatus::Booked => [PricingRule::BookedNight, 'Booked night, never repriced.'],
@@ -161,6 +161,7 @@ final readonly class PortfolioPricer
             $assessment->mode === PricingMode::PassThrough => [PricingRule::SmallGroup, "Unchanged: a group of {$assessment->groupSize} units is too small for portfolio pricing."],
             $assessment->mode === PricingMode::Protect => [PricingRule::AheadOfPace, "Protected: {$assessment->progress()}, ahead of pace."],
             $assessment->mode === PricingMode::Hold => [PricingRule::OnPace, "Held: {$assessment->progress()}, on pace."],
+            $leaders < $assessment->leaderBudget => [PricingRule::HeldForWeakerUnits, "Held: {$assessment->progress()}, a further discount would round to 0%."],
             default => [PricingRule::HeldForWeakerUnits, "Held: {$assessment->progress()}, the leader budget of {$assessment->leaderBudget} went to weaker units."],
         };
 
@@ -189,11 +190,14 @@ final readonly class PortfolioPricer
         $discounted = min($night->basePriceCents, (int) ceil(round($night->basePriceCents * (1 - $discount), 6) / 100) * 100);
         $recommended = $this->clamp($discounted, $unit);
 
+        $percent = (int) round((1 - $recommended / $night->basePriceCents) * 100);
+
         $headline = match (true) {
             $recommended > $night->basePriceCents => 'Raised to the floor price',
             $recommended === $night->basePriceCents && $recommended > $discounted => 'Held at the floor price',
             $recommended === $night->basePriceCents => 'Unchanged after rounding',
-            default => '-'.(int) round((1 - $recommended / $night->basePriceCents) * 100).'%',
+            $percent === 0 => 'Lowered by less than 1%',
+            default => "-{$percent}%",
         };
 
         $note = $recommended < $night->basePriceCents ? $this->clampNote($discounted, $recommended) : '';

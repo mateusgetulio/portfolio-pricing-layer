@@ -141,7 +141,7 @@ it('INV-9 explains every night with the rule that decided it', function () {
         PricingRule::SmallGroup->value => 'too small for portfolio pricing',
         PricingRule::AheadOfPace->value => 'ahead of pace',
         PricingRule::OnPace->value => 'on pace',
-        PricingRule::HeldForWeakerUnits->value => 'went to weaker units',
+        PricingRule::HeldForWeakerUnits->value => 'Held: ',
         PricingRule::PriceLeader->value => 'recent occupancy in the group',
     ];
 

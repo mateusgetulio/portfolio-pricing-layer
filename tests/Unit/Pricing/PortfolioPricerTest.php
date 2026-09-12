@@ -325,3 +325,39 @@ it('orders its output by group, date and unit regardless of input order', functi
         ->and(array_map(fn ($recommendation) => $recommendation->unitId, $recommendations->recommendations))
         ->toBe(['a-1', 'a-2', 'a-1', 'a-2', 'z-1', 'z-2', 'z-1', 'z-2']);
 });
+
+it('says a discount is under 1% when the floor leaves the price just below its base', function () {
+    $units = array_map(fn (int $index) => [
+        'id' => sprintf('unit-%02d', $index),
+        'status' => $index <= 8 ? 'booked' : 'available',
+        'occupancy' => [9 => 0.85, 10 => 0.76, 11 => 0.60, 12 => 0.51][$index] ?? 0.72,
+        'base' => $index === 12 ? 30000 : 14000,
+    ], range(1, 12));
+    $units[11]['floor'] = 29900;
+    $units[11]['ceiling'] = 32000;
+
+    $weakest = pricer()->price(scenario($units))->forUnitOn('unit-12', new DateTimeImmutable('2026-09-19'));
+
+    expect($weakest->recommendedPriceCents)->toBe(29900)
+        ->and($weakest->reason)->toBe('Lowered by less than 1%: 8 of 12 booked, target 10 by 8 days out, leader budget 2, weakest recent occupancy in the group. Limited to the floor price.');
+});
+
+it('explains held units when further discounts would round to 0%', function () {
+    $held = pricer(['leader_taper' => 0.95])->price(twelveApartments(3))
+        ->forUnitOn('unit-09', new DateTimeImmutable('2026-09-19'));
+
+    expect($held->rule)->toBe(PricingRule::HeldForWeakerUnits)
+        ->and($held->reason)->toBe('Held: 3 of 12 booked, target 10 by 8 days out, a further discount would round to 0%.');
+});
+
+it('can raise one unit discount when a weaker unit books while the group discounts less', function () {
+    $saturday = new DateTimeImmutable('2026-09-19');
+
+    $before = pricer()->price(twelveApartments(3));
+    $after = pricer()->price(withNightBooked(twelveApartments(3), 'unit-12', $saturday));
+
+    expect($before->forUnitOn('unit-11', $saturday)->assignedDiscount)->toBe(0.11)
+        ->and($after->forUnitOn('unit-11', $saturday)->assignedDiscount)->toBe(0.15)
+        ->and($before->assessmentFor('downtown-1br', $saturday)->leaderBudget)->toBe(7)
+        ->and($after->assessmentFor('downtown-1br', $saturday)->leaderBudget)->toBe(6);
+});
