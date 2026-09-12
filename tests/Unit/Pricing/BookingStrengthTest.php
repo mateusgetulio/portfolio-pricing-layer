@@ -15,7 +15,7 @@ it('measures each unit against the mean occupancy of its group', function () {
         ->and($strengths['c'])->toEqualWithDelta(0.5, 0.0001);
 });
 
-it('treats units without enough history as average', function () {
+it('leaves units without enough history out of the group mean and scores them as average', function () {
     $strengths = (new BookingStrength(30))->forUnits([
         makeUnit('a', 0.9),
         makeUnit('b', 0.3),

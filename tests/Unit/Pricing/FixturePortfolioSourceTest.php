@@ -43,13 +43,7 @@ it('rejects fixture names that do not exist', function (string $name) {
 ]);
 
 it('rejects a fixture that is not valid JSON', function () {
-    $directory = sys_get_temp_dir().'/pricing-fixtures-'.uniqid();
-    mkdir($directory);
-    file_put_contents($directory.'/broken.json', '{"as_of": ');
+    $source = new FixturePortfolioSource(__DIR__.'/../../fixtures');
 
-    expect(fn () => (new FixturePortfolioSource($directory))->load('broken'))
-        ->toThrow(InvalidPortfolioSnapshot::class, 'Fixture [broken] is not valid JSON.');
-
-    unlink($directory.'/broken.json');
-    rmdir($directory);
+    expect(fn () => $source->load('broken'))->toThrow(InvalidPortfolioSnapshot::class, 'Fixture [broken] is not valid JSON.');
 });

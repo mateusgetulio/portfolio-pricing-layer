@@ -59,6 +59,9 @@ it('rejects invalid input with a clear message', function (string $path, mixed $
 })->with([
     'floor price above ceiling price' => ['units.0.floor_price_cents', 30000, 'Unit [unit-01] has a floor price above its ceiling price.'],
     'zero floor price' => ['units.0.floor_price_cents', 0, 'Unit [unit-01] needs positive floor and ceiling prices.'],
+    'zero base price' => ['units.0.nights.0.base_price_cents', 0, 'The unit [unit-01] night on 2026-09-19 needs a positive base_price_cents, got 0.'],
+    'zero ceiling price' => ['units.0.ceiling_price_cents', 0, 'Unit [unit-01] needs positive floor and ceiling prices.'],
+    'negative ceiling price' => ['units.0.ceiling_price_cents', -26000, 'Unit [unit-01] needs positive floor and ceiling prices.'],
     'negative base price' => ['units.0.nights.0.base_price_cents', -100, 'The unit [unit-01] night on 2026-09-19 needs a positive base_price_cents, got -100.'],
     'trailing occupancy above one' => ['units.0.trailing_occupancy', 1.2, 'Unit [unit-01] trailing occupancy must be between 0 and 1, got 1.2.'],
     'negative trailing occupancy' => ['units.0.trailing_occupancy', -0.1, 'Unit [unit-01] trailing occupancy must be between 0 and 1, got -0.1.'],
