@@ -361,3 +361,19 @@ it('can raise one unit discount when a weaker unit books while the group discoun
         ->and($before->assessmentFor('downtown-1br', $saturday)->leaderBudget)->toBe(7)
         ->and($after->assessmentFor('downtown-1br', $saturday)->leaderBudget)->toBe(6);
 });
+
+it('records the booking strength used for ranking on every recommendation', function () {
+    $saturday = new DateTimeImmutable('2026-09-19');
+
+    $recommendations = pricer()->price(scenario([
+        ['id' => 'unit-a', 'status' => 'available', 'occupancy' => 0.5],
+        ['id' => 'unit-b', 'status' => 'booked', 'occupancy' => 0.75],
+        ['id' => 'unit-c', 'status' => 'available', 'occupancy' => 1.0],
+        ['id' => 'unit-d', 'status' => 'available', 'occupancy' => 0.2, 'history' => 10],
+    ]));
+
+    expect($recommendations->forUnitOn('unit-a', $saturday)->bookingStrength)->toEqualWithDelta(0.6667, 0.0001)
+        ->and($recommendations->forUnitOn('unit-b', $saturday)->bookingStrength)->toBe(1.0)
+        ->and($recommendations->forUnitOn('unit-c', $saturday)->bookingStrength)->toEqualWithDelta(1.3333, 0.0001)
+        ->and($recommendations->forUnitOn('unit-d', $saturday)->bookingStrength)->toBe(1.0);
+});

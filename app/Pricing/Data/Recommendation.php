@@ -20,6 +20,7 @@ final readonly class Recommendation
         public PricingMode $mode,
         public PricingRule $rule,
         public ?int $leaderRank,
+        public float $bookingStrength,
         public string $reason,
     ) {}
 

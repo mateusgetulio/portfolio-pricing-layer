@@ -125,8 +125,8 @@ final readonly class PortfolioPricer
             $rank = array_search($unit, $leaders, true);
 
             $recommendations[] = $rank === false
-                ? $this->unchanged($assessment, $unit, $night, count($leaders))
-                : $this->priceLeader($assessment, $unit, $night, $rank, $discounts[$rank]);
+                ? $this->unchanged($assessment, $unit, $night, count($leaders), $strengths[$unit->id])
+                : $this->priceLeader($assessment, $unit, $night, $rank, $discounts[$rank], $strengths[$unit->id]);
         }
 
         return $recommendations;
@@ -153,7 +153,7 @@ final readonly class PortfolioPricer
         return $discounts;
     }
 
-    private function unchanged(GroupAssessment $assessment, Unit $unit, Night $night, int $leaders): Recommendation
+    private function unchanged(GroupAssessment $assessment, Unit $unit, Night $night, int $leaders, float $bookingStrength): Recommendation
     {
         [$rule, $reason] = match (true) {
             $night->status === NightStatus::Booked => [PricingRule::BookedNight, 'Booked night, never repriced.'],
@@ -180,11 +180,12 @@ final readonly class PortfolioPricer
             mode: $assessment->mode,
             rule: $rule,
             leaderRank: null,
+            bookingStrength: $bookingStrength,
             reason: $reason.$this->clampNote($night->basePriceCents, $recommended),
         );
     }
 
-    private function priceLeader(GroupAssessment $assessment, Unit $unit, Night $night, int $rank, float $discount): Recommendation
+    private function priceLeader(GroupAssessment $assessment, Unit $unit, Night $night, int $rank, float $discount, float $bookingStrength): Recommendation
     {
         // Rounded up to a whole currency unit, so rounding never gives more discount than was assigned.
         $discounted = min($night->basePriceCents, (int) ceil(round($night->basePriceCents * (1 - $discount), 6) / 100) * 100);
@@ -213,6 +214,7 @@ final readonly class PortfolioPricer
             mode: $assessment->mode,
             rule: PricingRule::PriceLeader,
             leaderRank: $rank + 1,
+            bookingStrength: $bookingStrength,
             reason: "{$headline}: {$assessment->progress()}, leader budget {$assessment->leaderBudget}, {$this->weakness($rank)} recent occupancy in the group.{$note}",
         );
     }
