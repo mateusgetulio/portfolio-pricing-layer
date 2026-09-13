@@ -10,6 +10,8 @@ Twelve interchangeable apartments, eight booked for Saturday, four still empty. 
 
 It recommends prices and never writes them. The per-unit dynamic price is an input and is never changed.
 
+![Where the Portfolio Pricing Layer fits](docs/portfolio-pricing-layer.svg)
+
 ## Run it
 
 You need PHP 8.4 or newer and Composer. There is no database and no Node toolchain.

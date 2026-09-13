@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Where the Portfolio Pricing Layer fits</title>
+  <desc id="desc">A per-unit dynamic pricing engine produces a base price per unit. The Portfolio Pricing Layer sits on top of those prices, makes one group-level decision, and outputs fill, hold or protect recommendations. It does not replace the per-unit engine.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #15181D; }
+      .h1 { font-size: 46px; font-weight: 700; letter-spacing: -0.5px; }
+      .lede { font-size: 25px; fill: #5E6571; }
+      .title { font-size: 31px; font-weight: 600; }
+      .sub { font-size: 22px; fill: #5E6571; }
+      .unit { font-size: 22px; fill: #5E6571; }
+      .price { font-size: 26px; font-weight: 600; }
+      .layer { font-size: 33px; font-weight: 700; fill: #2445D6; }
+      .question { font-size: 22px; font-weight: 500; }
+      .state { font-size: 19px; font-weight: 700; letter-spacing: 2px; }
+      .state-sub { font-size: 21px; fill: #5E6571; }
+      .note-label { font-size: 16px; font-weight: 700; letter-spacing: 2px; fill: #6B7280; }
+      .note-label.accent { fill: #2F54EB; }
+      .note { font-size: 21px; fill: #3B414B; }
+    </style>
+  </defs>
+
+  <rect width="1920" height="1080" fill="#FFFFFF"/>
+
+  <g transform="translate(60 0)">
+    <text x="160" y="104" class="h1">Where the Portfolio Pricing Layer fits</text>
+    <text x="160" y="150" class="lede">It does not replace per-unit dynamic pricing. It sits on top of those prices and adds one group-level decision.</text>
+
+    <!-- 1. Per-unit dynamic pricing -->
+    <rect x="160" y="206" width="1000" height="110" rx="14" fill="#FFFFFF" stroke="#D9DDE3" stroke-width="1.5"/>
+    <text x="200" y="256" class="title">Per-unit Dynamic Pricing</text>
+    <text x="200" y="294" class="sub">Existing per-unit nightly price</text>
+
+    <line x1="660" y1="322" x2="660" y2="358" stroke="#A3A9B3" stroke-width="2"/>
+    <path d="M652 352 L660 363 L668 352" fill="none" stroke="#A3A9B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- 2. Base price per unit -->
+    <rect x="160" y="366" width="1000" height="160" rx="14" fill="#FFFFFF" stroke="#D9DDE3" stroke-width="1.5"/>
+    <text x="200" y="416" class="title">Base Price per Unit</text>
+
+    <rect x="200" y="436" width="292" height="62" rx="10" fill="#F6F7F9" stroke="#E3E6EA" stroke-width="1.5"/>
+    <text x="224" y="476" class="unit">Unit A</text>
+    <text x="468" y="477" class="price" text-anchor="end">$142</text>
+
+    <rect x="514" y="436" width="292" height="62" rx="10" fill="#F6F7F9" stroke="#E3E6EA" stroke-width="1.5"/>
+    <text x="538" y="476" class="unit">Unit B</text>
+    <text x="782" y="477" class="price" text-anchor="end">$138</text>
+
+    <rect x="828" y="436" width="292" height="62" rx="10" fill="#F6F7F9" stroke="#E3E6EA" stroke-width="1.5"/>
+    <text x="852" y="476" class="unit">Unit C</text>
+    <text x="1096" y="477" class="price" text-anchor="end">$139</text>
+
+    <line x1="660" y1="532" x2="660" y2="568" stroke="#A3A9B3" stroke-width="2"/>
+    <path d="M652 562 L660 573 L668 562" fill="none" stroke="#A3A9B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- 3. Portfolio Pricing Layer (emphasized) -->
+    <rect x="160" y="576" width="1000" height="210" rx="16" fill="#F3F6FF" stroke="#2F54EB" stroke-width="2.5"/>
+    <text x="200" y="628" class="layer">Portfolio Pricing Layer</text>
+    <text x="200" y="664" class="sub">Group-level adjustment</text>
+
+    <rect x="200" y="692" width="292" height="66" rx="10" fill="#FFFFFF" stroke="#CCD7FB" stroke-width="1.5"/>
+    <text x="346" y="733" class="question" text-anchor="middle">Are we behind pace?</text>
+
+    <rect x="514" y="692" width="292" height="66" rx="10" fill="#FFFFFF" stroke="#CCD7FB" stroke-width="1.5"/>
+    <text x="660" y="733" class="question" text-anchor="middle">How many price leaders?</text>
+
+    <rect x="828" y="692" width="292" height="66" rx="10" fill="#FFFFFF" stroke="#CCD7FB" stroke-width="1.5"/>
+    <text x="974" y="733" class="question" text-anchor="middle">Which units need help?</text>
+
+    <line x1="660" y1="792" x2="660" y2="828" stroke="#A3A9B3" stroke-width="2"/>
+    <path d="M652 822 L660 833 L668 822" fill="none" stroke="#A3A9B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- 4. Recommendations -->
+    <rect x="160" y="836" width="1000" height="172" rx="14" fill="#FFFFFF" stroke="#D9DDE3" stroke-width="1.5"/>
+    <text x="200" y="886" class="title">Recommendations</text>
+
+    <rect x="200" y="906" width="292" height="76" rx="10" fill="#F6F7F9" stroke="#E3E6EA" stroke-width="1.5"/>
+    <text x="224" y="938" class="state">FILL</text>
+    <text x="224" y="968" class="state-sub">Selectively discount</text>
+
+    <rect x="514" y="906" width="292" height="76" rx="10" fill="#F6F7F9" stroke="#E3E6EA" stroke-width="1.5"/>
+    <text x="538" y="938" class="state">HOLD</text>
+    <text x="538" y="968" class="state-sub">Keep base prices</text>
+
+    <rect x="828" y="906" width="292" height="76" rx="10" fill="#F6F7F9" stroke="#E3E6EA" stroke-width="1.5"/>
+    <text x="852" y="938" class="state">PROTECT</text>
+    <text x="852" y="968" class="state-sub">No portfolio discount</text>
+
+    <!-- Annotations -->
+    <path d="M1196 214 H1208 V518 H1196" fill="none" stroke="#C4C9D1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1240" y="340" class="note-label">EXISTING</text>
+    <text x="1240" y="376" class="note">Stays exactly as it is.</text>
+    <text x="1240" y="406" class="note">Its per-unit prices are the input.</text>
+
+    <path d="M1196 584 H1208 V778 H1196" fill="none" stroke="#2F54EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1240" y="652" class="note-label accent">PROTOTYPE</text>
+    <text x="1240" y="688" class="note">Adds one group-level decision</text>
+    <text x="1240" y="718" class="note">on top of those prices.</text>
+
+    <path d="M1196 844 H1208 V1000 H1196" fill="none" stroke="#C4C9D1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1240" y="894" class="note-label">OUTPUT</text>
+    <text x="1240" y="930" class="note">Read-only recommendations.</text>
+    <text x="1240" y="960" class="note">Nothing is written back.</text>
+  </g>
+</svg>
